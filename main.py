@@ -1,7 +1,6 @@
 import os
-import re
-from faster_whisper import WhisperModel
-from dictionary import replacement_dict
+import google.generativeai as genai
+import json
 
 def run_atis_system():
     audio_file = "atis_recorded.wav"
@@ -9,91 +8,64 @@ def run_atis_system():
         print("Erreur: Fichier audio introuvable.")
         return
 
-    # 1. Transcription et Nettoyage
-    # Utilisation du modèle 'medium.en' pour une meilleure précision sur les termes aéronautiques
-    model = WhisperModel("medium.en", device="cpu", compute_type="int8")
-    segments, _ = model.transcribe(audio_file, beam_size=5)
-    full_text = " ".join([s.text for s in segments]).upper()
+    # 1. Configuration de l'API Gemini
+    # Assure-toi que GEMINI_API_KEY est bien configuré dans tes secrets GitHub
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    model = genai.GenerativeModel("gemini-1.5-flash")
 
-    # Application du dictionnaire de remplacement pour corriger Whisper
-    for wrong, right in replacement_dict.items():
-        full_text = re.sub(rf'\b{wrong}\b', right, full_text)
+    # 2. Upload et analyse de l'audio
+    print("Analyse de l'audio en cours...")
+    audio_data = genai.upload_file(path=audio_file)
 
-    # Nettoyage des itérations (on garde la version après "TALLINN AIRPORT")
-    if "TALLINN AIRPORT" in full_text:
-        parts = full_text.split("TALLINN AIRPORT")
-        text = "TALLINN AIRPORT" + parts[-1]
-    else:
-        text = full_text
-
-    # On ne garde qu'une seule mention d'INFORMATION pour éviter les doublons de lettre
-    if text.count("INFORMATION") > 1:
-        parts = text.split("INFORMATION")
-        text = "INFORMATION " + parts[1]
-
-    # 2. Fonction d'extraction sécurisée
-    def find(pattern, src):
-        res = re.findall(pattern, src, re.DOTALL)
-        return res[-1] if res else "---"
-
-    # 3. EXTRACTION DES DONNÉES
-    # Capture "RUNWAY 26" ou "RUNWAY 8"
-    info_val = find(r"INFORMATION\s+([A-Z])", text)
-    rwy_val = find(r"RUNWAY\s+(\d{1,2})", text) 
-    qnh_val = find(r"QNH\s+(\d{4})", text)
+    # Prompt ultra-précis pour l'aviation
+    prompt = """
+    Tu es un expert en ATIS aéronautique. Analyse cet enregistrement ATIS (EETN Tallinn).
+    1. Donne une transcription textuelle complète et propre.
+    2. Extrais les données structurées en format JSON.
     
-    time_raw = find(r"TIME\s+(\d{4})", text)
-    zulu_val = f"{time_raw[:2]}:{time_raw[2:]}" if time_raw != "---" else "---"
-
-    # Vent (TDZ) - Supporte "260 DEGREES 12 KNOTS" ou "260 12 KNOTS"
-    w_dir = find(r"TOUCHDOWN ZONE,\s+(\d{3})", text)
-    w_spd = find(r"TOUCHDOWN ZONE,.*?(\d+)\s+KNOTS", text)
-    wind_display = f"{w_dir}°/{w_spd}KT" if w_dir != "---" else "---"
-
-    # Visibilité - Cherche "10KM", "10 KILOMETERS" ou "CAVOK"
-    vis_raw = find(r"VISIBILITY.*?TOUCHDOWN ZONE,\s+(\d+)\s*(?:KM|KILOMETERS|METERS)?", text)
-    vis_display = vis_raw + "m" if vis_raw != "---" else ("CAVOK" if "CAVOK" in text else "---")
-    
-    rvr_raw = find(r"VISUAL RANGE.*?TOUCHDOWN ZONE,\s+(\d+)", text)
-    rvr_display = f"RVR {rvr_raw}m" if rvr_raw != "---" else ""
-
-    # Temp/Dewp
-    t_val = find(r"TEMPERATURE\s+(\d+)", text)
-    d_val = find(r"DEWPOINT\s+(\d+)", text)
-    temp_dewp_display = f"{t_val}° / {d_val}°"
-
-    # RCC & Contaminants (Amélioré)
-    rcc_val = find(r"CONDITION CODE.*?TOUCHDOWN\s+(\d)", text)
-    # Si RCC est trouvé (ex: 5), on formate en 5/5/5, sinon "---"
-    rcc_display = f"{rcc_val}/{rcc_val}/{rcc_val}" if rcc_val != "---" else "---"
-
-    # 4. Dictionnaire de données pour le template
-    data = {
-        "INFO": info_val,
-        "ZULU": zulu_val,
-        "RWY": rwy_val,
-        "QNH": qnh_val,
-        "WIND": wind_display,
-        "VIS": vis_display,
-        "RVR": rvr_display,
-        "TEMP_DEWP": temp_dewp_display,
-        "RCC": rcc_val,
-    #    "CONTAM": contam_val,
-        "RAW_TEXT": text
+    Réponds EXCLUSIVEMENT avec le format JSON suivant :
+    {
+        "INFO": "Lettre unique",
+        "ZULU": "HH:MM",
+        "RWY": "Numéro de piste",
+        "QNH": "Valeur numérique",
+        "WIND": "Direction/Force KT",
+        "VIS": "Visibilité",
+        "RVR": "Valeur ou ---",
+        "TEMP_DEWP": "T / DP",
+        "RCC": "Code RCC",
+        "CONTAM": "Type de contaminant",
+        "RAW_TEXT": "Transcription complète ici"
     }
+    """
 
-    # 5. Injection dans le template et génération de l'index.html
-    if os.path.exists("template.html"):
-        with open("template.html", "r", encoding="utf-8") as f:
+    response = model.generate_content([prompt, audio_data])
+    
+    # 3. Parsing de la réponse
+    try:
+        # On enlève les balises ```json si Gemini en ajoute
+        clean_json = response.text.replace("```json", "").replace("```", "").strip()
+        data = json.loads(clean_json)
+    except Exception as e:
+        print(f"Erreur de lecture de l'IA : {e}")
+        return
+
+    # 4. Injection dans le template HTML
+    template_path = "template.html"
+    index_path = "index.html"
+
+    if os.path.exists(template_path):
+        with open(template_path, "r", encoding="utf-8") as f:
             html_content = f.read()
     
+        # Remplacement dynamique des variables {{VARIABLE}}
         for key, value in data.items():
             placeholder = "{{" + str(key) + "}}"
             html_content = html_content.replace(placeholder, str(value))
                 
-        with open("index.html", "w", encoding="utf-8") as f:
+        with open(index_path, "w", encoding="utf-8") as f:
             f.write(html_content)
-            print("Dashboard mis à jour avec succès (index.html)")
+            print(f"Dashboard mis à jour avec succès pour l'information {data.get('INFO')}")
 
 if __name__ == "__main__":
     run_atis_system()
