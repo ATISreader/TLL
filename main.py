@@ -1,7 +1,8 @@
 import os
 from google import genai
+from google.genai import types  # Import des types pour la validation
 import json
-import time
+import base64
 
 def run_atis_system():
     audio_file = "atis_recorded.wav"
@@ -9,17 +10,15 @@ def run_atis_system():
         print("Erreur: Fichier audio introuvable.")
         return
 
-    # 1. Initialisation du nouveau client GenAI
+    # 1. Initialisation du client
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
     
-    # 2. Upload de l'audio
-    print(f"Upload de {audio_file}...")
+    print(f"Lecture et encodage de {audio_file}...")
     try:
-        # Sur le nouveau SDK, on upload directement dans l'appel ou via upload
         with open(audio_file, "rb") as f:
             audio_bytes = f.read()
 
-        # 3. Prompt et Analyse directe (Le nouveau SDK gère l'attente différemment)
+        # 2. Construction du contenu avec les types officiels
         prompt = """
         Tu es un expert en ATIS aéronautique. Analyse cet audio ATIS.
         Réponds EXCLUSIVEMENT avec un objet JSON structuré comme ceci, sans texte autour :
@@ -38,18 +37,21 @@ def run_atis_system():
         }
         """
 
+        # Création de la partie audio selon les specs du nouveau SDK
+        audio_part = types.Part.from_bytes(
+            data=audio_bytes,
+            mime_type="audio/wav"
+        )
+
         print("Analyse par Gemini 2.0 Flash...")
-        # Utilisation de la méthode native pour l'audio sur Gemini 2.0
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=[
-                prompt,
-                {"mime_type": "audio/wav", "data": audio_bytes}
-            ]
+            contents=[prompt, audio_part]
         )
         
-        # Nettoyage de la réponse
+        # 3. Parsing de la réponse
         output = response.text.strip()
+        # Sécurité pour extraire le JSON si l'IA ajoute des balises markdown
         if "```json" in output:
             output = output.split("```json")[1].split("```")[0].strip()
         elif "```" in output:
@@ -58,21 +60,27 @@ def run_atis_system():
         data = json.loads(output)
         
     except Exception as e:
-        print(f"Erreur avec le nouveau SDK : {e}")
+        print(f"Erreur lors de l'exécution : {e}")
+        # Affiche la réponse brute en cas d'erreur de parsing pour débugger
+        if 'response' in locals():
+            print(f"Réponse brute : {response.text}")
         return
 
     # 4. Injection dans le template HTML
-    if os.path.exists("template.html"):
-        with open("template.html", "r", encoding="utf-8") as f:
+    template_path = "template.html"
+    index_path = "index.html"
+
+    if os.path.exists(template_path):
+        with open(template_path, "r", encoding="utf-8") as f:
             html_content = f.read()
     
         for key, value in data.items():
             placeholder = "{{" + str(key) + "}}"
             html_content = html_content.replace(placeholder, str(value))
                 
-        with open("index.html", "w", encoding="utf-8") as f:
+        with open(index_path, "w", encoding="utf-8") as f:
             f.write(html_content)
-            print("Dashboard mis à jour avec succès (SDK v2) !")
+            print(f"Succès ! Dashboard mis à jour (Information {data.get('INFO')})")
 
 if __name__ == "__main__":
     run_atis_system()
