@@ -23,14 +23,14 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Faster Whisper
+      - name: Install Google AI dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install --no-cache-dir faster-whisper
+          pip install -U google-generativeai
 
       - name: Run ATIS Pipeline (main.py)
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python main.py
 
       - name: Commit and Push changes
@@ -38,5 +38,5 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add index.html
-          git commit -m "Update ATIS Dashboard: $(date -u +'%Y-%m-%d %H:%M') UTC" || exit 0
+          git commit -m "Update ATIS Dashboard via Gemini: $(date -u +'%Y-%m-%d %H:%M') UTC" || exit 0
           git push
