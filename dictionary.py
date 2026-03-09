@@ -15,6 +15,13 @@ replacement_dict = {
     "1450M": "1450", 
     "NO-SICK": "NOSIG",
     "STATUS SKY": "STATE OF SKY",
+    "ITALIAN AIRPORT": "TALLINN AIRPORT",
+    "LIMA OUT": "LIMA",
+    "ONE SIX TWO ZERO": "1620",
+    "TWO SIX ZERO DEGREES": "260 DEGREES",
+    "ONE TWO KNOTS": "12 KNOTS",
+    "ONE ZERO KILOMETERS": "10KM",
+    "ONE ZERO ONE EIGHT": "1018",
 
     # --- Piste & RCC ---
     "PATCH DOWN": "TOUCHDOWN",
