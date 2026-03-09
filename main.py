@@ -1,86 +1,72 @@
 import os
 from google import genai
-from google.genai import types  # Import des types pour la validation
+from google.genai import types
 import json
-import base64
 
 def run_atis_system():
     audio_file = "atis_recorded.wav"
+    template_path = "template.html"
+    index_path = "index.html"
+
     if not os.path.exists(audio_file): 
-        print("Erreur: Fichier audio introuvable.")
+        print(f"❌ Erreur: {audio_file} introuvable.")
         return
 
     # 1. Initialisation du client
     client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
     
-    print(f"Lecture et encodage de {audio_file}...")
     try:
         with open(audio_file, "rb") as f:
             audio_bytes = f.read()
 
-        # 2. Construction du contenu avec les types officiels
         prompt = """
-        Tu es un expert en ATIS aéronautique. Analyse cet audio ATIS.
-        Réponds EXCLUSIVEMENT avec un objet JSON structuré comme ceci, sans texte autour :
+        Analyse cet audio ATIS. Réponds EXCLUSIVEMENT avec ce JSON :
         {
-            "INFO": "Lettre",
-            "ZULU": "Heure",
-            "RWY": "Piste",
-            "QNH": "Valeur",
-            "WIND": "Vent",
-            "VIS": "Visibilité",
-            "RVR": "RVR ou ---",
-            "TEMP_DEWP": "T/DP",
-            "RCC": "RCC",
-            "CONTAM": "Contaminants",
-            "RAW_TEXT": "Transcription complète"
+            "INFO": "Lettre", "ZULU": "Heure", "RWY": "Piste", "QNH": "Valeur",
+            "WIND": "Vent", "RVR": "Visibilité/RVR", "TEMP_DEWP": "T/DP",
+            "RCC": "RCC", "CONTAM": "Contaminants", "RAW_TEXT": "Transcription"
         }
         """
 
-        # Création de la partie audio selon les specs du nouveau SDK
-        audio_part = types.Part.from_bytes(
-            data=audio_bytes,
-            mime_type="audio/wav"
-        )
+        audio_part = types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav")
 
-        print("Analyse par Gemini 2.0 Flash...")
+        print("📡 Analyse Gemini en cours...")
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=[prompt, audio_part]
         )
         
-        # 3. Parsing de la réponse
+        # Nettoyage et parsing
         output = response.text.strip()
-        # Sécurité pour extraire le JSON si l'IA ajoute des balises markdown
         if "```json" in output:
             output = output.split("```json")[1].split("```")[0].strip()
         elif "```" in output:
             output = output.split("```")[1].split("```")[0].strip()
             
         data = json.loads(output)
-        
-    except Exception as e:
-        print(f"Erreur lors de l'exécution : {e}")
-        # Affiche la réponse brute en cas d'erreur de parsing pour débugger
-        if 'response' in locals():
-            print(f"Réponse brute : {response.text}")
-        return
+        print(f"✅ Données reçues : {data['INFO']} à {data['ZULU']}Z")
 
-    # 4. Injection dans le template HTML
-    template_path = "template.html"
-    index_path = "index.html"
+        # 2. Injection dans le template
+        if not os.path.exists(template_path):
+            print(f"❌ Erreur: {template_path} introuvable.")
+            return
 
-    if os.path.exists(template_path):
         with open(template_path, "r", encoding="utf-8") as f:
             html_content = f.read()
     
+        # Remplacement des balises
         for key, value in data.items():
             placeholder = "{{" + str(key) + "}}"
             html_content = html_content.replace(placeholder, str(value))
                 
+        # 3. Écriture forcée de l'index.html
         with open(index_path, "w", encoding="utf-8") as f:
             f.write(html_content)
-            print(f"Succès ! Dashboard mis à jour (Information {data.get('INFO')})")
+        
+        print(f"🚀 Fichier {index_path} généré avec succès.")
+
+    except Exception as e:
+        print(f"💥 Erreur critique : {e}")
 
 if __name__ == "__main__":
     run_atis_system()
