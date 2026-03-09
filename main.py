@@ -37,21 +37,22 @@ def run_atis_system():
         return res[-1] if res else "---"
 
     # 3. EXTRACTION DES DONNÉES
+    # Capture "RUNWAY 26" ou "RUNWAY 8"
     info_val = find(r"INFORMATION\s+([A-Z])", text)
-    rwy_val = find(r"RUNWAY\s+(\d{2})", text)
+    rwy_val = find(r"RUNWAY\s+(\d{1,2})", text) 
     qnh_val = find(r"QNH\s+(\d{4})", text)
     
     time_raw = find(r"TIME\s+(\d{4})", text)
     zulu_val = f"{time_raw[:2]}:{time_raw[2:]}" if time_raw != "---" else "---"
 
-    # Vent (TDZ)
-    w_dir = find(r"WIND.*?TOUCHDOWN ZONE,\s+(\d{3})", text)
-    w_spd = find(r"WIND.*?TOUCHDOWN ZONE,.*?(\d+)\s+KNOTS", text)
+    # Vent (TDZ) - Supporte "260 DEGREES 12 KNOTS" ou "260 12 KNOTS"
+    w_dir = find(r"TOUCHDOWN ZONE,\s+(\d{3})", text)
+    w_spd = find(r"TOUCHDOWN ZONE,.*?(\d+)\s+KNOTS", text)
     wind_display = f"{w_dir}°/{w_spd}KT" if w_dir != "---" else "---"
 
-    # Visibilité et RVR
-    vis_raw = find(r"VISIBILITY.*?TOUCHDOWN ZONE,\s+(\d+\s*\w+)", text)
-    vis_display = vis_raw if vis_raw != "---" else ("CAVOK" if "CAVOK" in text else "---")
+    # Visibilité - Cherche "10KM", "10 KILOMETERS" ou "CAVOK"
+    vis_raw = find(r"VISIBILITY.*?TOUCHDOWN ZONE,\s+(\d+)\s*(?:KM|KILOMETERS|METERS)?", text)
+    vis_display = vis_raw + "m" if vis_raw != "---" else ("CAVOK" if "CAVOK" in text else "---")
     
     rvr_raw = find(r"VISUAL RANGE.*?TOUCHDOWN ZONE,\s+(\d+)", text)
     rvr_display = f"RVR {rvr_raw}m" if rvr_raw != "---" else ""
@@ -61,9 +62,10 @@ def run_atis_system():
     d_val = find(r"DEWPOINT\s+(\d+)", text)
     temp_dewp_display = f"{t_val}° / {d_val}°"
 
-    # Variables de statut (RCC & Contaminants)
-    rcc_val = "5/5/5" if "TOUCHDOWN 5" in text else "---"
-    contam_val = "WET / WET / WET" if "WET" in text else "---"
+    # RCC & Contaminants (Amélioré)
+    rcc_val = find(r"CONDITION CODE.*?TOUCHDOWN\s+(\d)", text)
+    # Si RCC est trouvé (ex: 5), on formate en 5/5/5, sinon "---"
+    rcc_display = f"{rcc_val}/{rcc_val}/{rcc_val}" if rcc_val != "---" else "---"
 
     # 4. Dictionnaire de données pour le template
     data = {
