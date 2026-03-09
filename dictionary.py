@@ -5,6 +5,7 @@ replacement_dict = {
     "DARWIN AIRPORT": "TALLINN AIRPORT",
     "DARLING AIRPORT": "TALLINN AIRPORT",
     "BUSINESS TALENT": "THIS IS TALLINN",
+    "BUSINESS": "THIS IS",
     "STARLIN": "TALLINN",
     "TELLING": "TALLINN",
     "STALIN": "TALLINN",
@@ -38,6 +39,7 @@ replacement_dict = {
     "LOWERCAST": "OVERCAST",
     "LOW VISIBILITY PROCEDURES": "LVP ACTIVE",
     "LVP ACTIVE IN OPERATION": "LVP ACTIVE",
+    "NO-THICK": "NOSIG",
 
     # --- Chiffres & Alphabet ---
     "ZERO": "0", "ONE": "1", "TWO": "2", "THREE": "3", "FOUR": "4",
