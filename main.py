@@ -78,7 +78,7 @@ def run_atis_system():
         "RVR": rvr_display,
         "TEMP_DEWP": temp_dewp_display,
         "RCC": rcc_val,
-        "CONTAM": contam_val,
+    #    "CONTAM": contam_val,
         "RAW_TEXT": text
     }
 
