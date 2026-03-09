@@ -10,56 +10,71 @@ def run_atis_system():
         return
 
     # 1. Configuration de l'API Gemini
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("Erreur: GEMINI_API_KEY non trouvée dans l'environnement.")
+        return
+        
+    genai.configure(api_key=api_key)
     
-    # Utilisation du modèle flash le plus récent
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    # Utilisation du nom de modèle complet pour éviter l'erreur 404
+    model = genai.GenerativeModel("gemini-1.5-flash-latest")
 
     # 2. Upload et attente du traitement
-    print("Upload de l'audio...")
-    audio_data = genai.upload_file(path=audio_file)
-    
-    # Petite boucle pour attendre que Google ait fini de traiter l'audio
-    while audio_data.state.name == "PROCESSING":
-        print("Traitement de l'audio par Google...")
-        time.sleep(2)
-        audio_data = genai.get_file(audio_data.name)
+    print(f"Upload de {audio_file}...")
+    try:
+        audio_data = genai.upload_file(path=audio_file)
+        
+        # Attente que le fichier soit prêt sur les serveurs Google
+        while audio_data.state.name == "PROCESSING":
+            print("Google traite l'audio...")
+            time.sleep(3)
+            audio_data = genai.get_file(audio_data.name)
 
-    if audio_data.state.name == "FAILED":
-        print("Erreur de traitement audio chez Google.")
+        if audio_data.state.name == "FAILED":
+            print("Échec du traitement audio par Google.")
+            return
+    except Exception as e:
+        print(f"Erreur lors de l'upload : {e}")
         return
 
     # 3. Prompt d'extraction
     prompt = """
-    Tu es un expert en ATIS aéronautique. Analyse cet enregistrement ATIS.
-    Réponds EXCLUSIVEMENT avec le format JSON suivant, sans texte avant ou après :
+    Analyse cet audio ATIS aéronautique.
+    Réponds EXCLUSIVEMENT avec un objet JSON structuré comme ceci :
     {
         "INFO": "Lettre",
-        "ZULU": "HH:MM",
-        "RWY": "Numéro",
+        "ZULU": "Heure",
+        "RWY": "Piste",
         "QNH": "Valeur",
-        "WIND": "Dir/Force KT",
+        "WIND": "Vent",
         "VIS": "Visibilité",
-        "RVR": "Valeur ou ---",
-        "TEMP_DEWP": "T / DP",
-        "RCC": "Code",
-        "CONTAM": "Type",
+        "RVR": "RVR ou ---",
+        "TEMP_DEWP": "T/DP",
+        "RCC": "RCC",
+        "CONTAM": "Contaminants",
         "RAW_TEXT": "Transcription complète"
     }
     """
 
-    print("Analyse par l'IA...")
-    response = model.generate_content([prompt, audio_data])
-    
-    # 4. Parsing et Injection
+    print("Analyse par Gemini...")
     try:
-        clean_json = response.text.replace("```json", "").replace("```", "").strip()
-        data = json.loads(clean_json)
+        response = model.generate_content([prompt, audio_data])
+        
+        # Nettoyage de la réponse
+        output = response.text.strip()
+        if "```json" in output:
+            output = output.split("```json")[1].split("```")[0].strip()
+        elif "```" in output:
+            output = output.split("```")[1].split("```")[0].strip()
+            
+        data = json.loads(output)
     except Exception as e:
-        print(f"Erreur de parsing : {e}")
-        print(f"Réponse brute de l'IA : {response.text}")
+        print(f"Erreur lors de l'analyse ou du parsing : {e}")
+        print(f"Réponse brute reçue : {response.text if 'response' in locals() else 'Aucune'}")
         return
 
+    # 4. Injection dans le template
     if os.path.exists("template.html"):
         with open("template.html", "r", encoding="utf-8") as f:
             html_content = f.read()
@@ -70,7 +85,7 @@ def run_atis_system():
                 
         with open("index.html", "w", encoding="utf-8") as f:
             f.write(html_content)
-            print("Dashboard mis à jour avec succès.")
+            print("Dashboard mis à jour avec succès !")
 
 if __name__ == "__main__":
     run_atis_system()
