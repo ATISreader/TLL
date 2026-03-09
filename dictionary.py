@@ -10,6 +10,7 @@ replacement_dict = {
     "STALIN": "TALLINN",
     "TALIN": "TALLINN",
     "VST AIRPORT": "TALLINN AIRPORT",
+    "SAILING":"TALLINN",
     "1450M": "1450", 
     "NO-SICK": "NOSIG",
     "STATUS SKY": "STATE OF SKY",
