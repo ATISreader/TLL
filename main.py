@@ -33,9 +33,22 @@ def run_atis_system():
     client = Groq(api_key=groq_api_key)
 
     prompt = f"""
-    Analyse cette transcription ATIS. Extrais les données et retourne uniquement un JSON pur (sans markdown).
+    Analyse cette transcription ATIS et retourne UNIQUEMENT un JSON pur.
+    NE RETOURNE PAS d'objets imbriqués ou de listes, utilise uniquement des textes simples pour chaque clé.
+    
     Transcription: {transcription}
-    Clés attendues: INFO, ZULU, RWY, QNH, WIND, RVR, TEMP_DEWP, RCC, CONTAM, RAW_TEXT
+    
+    Clés attendues (valeurs en texte simple uniquement):
+    - INFO: Lettre de l'information (ex: A, B, C)
+    - ZULU: Heure de l'info (format HHMM)
+    - RWY: Piste et état (ex: 26, humide)
+    - QNH: Valeur QNH (ex: 1015 hPa)
+    - WIND: Vent (ex: 220/11kt)
+    - RVR: Visibilité (ex: 10km ou CAVOK)
+    - TEMP_DEWP: Temp/Dewp (ex: 10/0)
+    - RCC: Code RCC (ex: 5/5/5)
+    - CONTAM: Contaminants (ex: Humide)
+    - RAW_TEXT: La transcription originale
     """
 
     completion = client.chat.completions.create(
