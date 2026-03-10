@@ -15,7 +15,7 @@ def run_atis_system():
         print(">>> ERREUR: Fichier audio manquant.")
         sys.exit(1)
 
-    # 1. Transcription avec Whisper Medium (Meilleur compromis précision/vitesse)
+    # 1. Transcription avec Whisper Medium
     print(">>> CHARGEMENT DU MODÈLE : medium...")
     model = WhisperModel("medium", device="cpu", compute_type="int8")
     
@@ -46,10 +46,15 @@ def run_atis_system():
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
     prompt = f"""
     Analyze this ATIS transcription. Return a JSON object ONLY.
-    - INFO: Extract ONLY the single letter (e.g. "E").
+    - INFO: Extract ONLY the single letter (e.g. "K").
     - ZULU: Extract time as HH:MM.
     - RWY: Return exactly "26 IN USE".
-    - WIND, QNH, RVR, TEMP_DEWP, RCC, CONTAM: Extract clear values.
+    - WIND: Extract clear values (e.g. 230°, 10 KNOTS).
+    - QNH: Extract clear values (e.g. 1014 HPA).
+    - RVR: Extract value or "NONE".
+    - TEMP_DEWP: Extract format (e.g. 12, -1).
+    - RCC: Format as X, X, X.
+    - CONTAM: Format clearly (e.g. WET 50%, WET 50%, WET 25%).
     - RAW_TEXT: The provided transcription.
     
     Transcription: {clean_transcription}
@@ -64,9 +69,14 @@ def run_atis_system():
     data = json.loads(completion.choices[0].message.content)
     
     # 6. Nettoyage final pour garantir le format visuel souhaité
+    # Nettoyage des unités doublées par l'IA
+    if "QNH" in data:
+        data["QNH"] = data["QNH"].upper().replace("HPAHPA", "HPA")
+    
+    # Forçage des valeurs spécifiques
     data["INFO"] = data.get("INFO", "").replace("INFORMATION", "").strip()
     data["RWY"] = "26 IN USE"
-    data["RAW_TEXT"] = clean_transcription
+    data["RAW_TEXT"] = clean_transcription[:350] + "..." 
 
     # 7. Injection dans le template HTML
     with open(template_path, "r", encoding="utf-8") as f:
@@ -79,7 +89,7 @@ def run_atis_system():
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html)
     
-    print(">>> SUCCÈS : Dashboard mis à jour avec le modèle medium.")
+    print(">>> SUCCÈS : Dashboard mis à jour.")
 
 if __name__ == "__main__":
     run_atis_system()
