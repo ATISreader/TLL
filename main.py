@@ -66,7 +66,7 @@ def run_atis_system():
     # 6. Nettoyage final pour garantir le format visuel souhaité
     data["INFO"] = data.get("INFO", "").replace("INFORMATION", "").strip()
     data["RWY"] = "26 IN USE"
-    data["RAW_TEXT"] = clean_transcription[:300] + "..." 
+    data["RAW_TEXT"] = clean_transcription
 
     # 7. Injection dans le template HTML
     with open(template_path, "r", encoding="utf-8") as f:
