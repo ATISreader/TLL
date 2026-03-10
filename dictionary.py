@@ -22,6 +22,7 @@ replacement_dict = {
     "ONE TWO KNOTS": "12 KNOTS",
     "ONE ZERO KILOMETERS": "10KM",
     "ONE ZERO ONE EIGHT": "1018",
+    "WEHRFURT": "THE AIRPORT",
 
     # --- Piste & RCC ---
     "PATCH DOWN": "TOUCHDOWN",
