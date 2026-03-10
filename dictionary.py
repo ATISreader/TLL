@@ -34,6 +34,7 @@ replacement_dict = {
     "TOP END": "STOP END",
     "PATRICK IN USE": "RUNWAY 26 IN USE",
     "IN YOUTH": "IN USE",
+    "MINUS 0 TO AN INCH": "MINUS 1",
 
     # --- Météo & LVP ---
     "CAPITAL K": "CAVOK",
