@@ -15,8 +15,11 @@ def run_atis_system():
         print(">>> ERREUR: Fichier audio manquant.")
         sys.exit(1)
 
-    # 1. Transcription avec Whisper Small
-    model = WhisperModel("small", device="cpu", compute_type="int8")
+    # 1. Transcription avec Whisper Medium (Meilleur compromis précision/vitesse)
+    print(">>> CHARGEMENT DU MODÈLE : medium...")
+    model = WhisperModel("medium", device="cpu", compute_type="int8")
+    
+    print(">>> TRANSCRIPTION EN COURS...")
     segments, _ = model.transcribe(audio_file)
     
     # 2. Dédoublonnage et concaténation
@@ -39,6 +42,7 @@ def run_atis_system():
     clean_transcription = match.group(1).strip() if match else transcription
 
     # 5. Analyse Groq
+    print(">>> ANALYSE AVEC GROQ (LLAMA-3.3)...")
     client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
     prompt = f"""
     Analyze this ATIS transcription. Return a JSON object ONLY.
@@ -62,7 +66,7 @@ def run_atis_system():
     # 6. Nettoyage final pour garantir le format visuel souhaité
     data["INFO"] = data.get("INFO", "").replace("INFORMATION", "").strip()
     data["RWY"] = "26 IN USE"
-    data["RAW_TEXT"] = clean_transcription[:300] + "..." # Tronquage pour le design
+    data["RAW_TEXT"] = clean_transcription[:300] + "..." 
 
     # 7. Injection dans le template HTML
     with open(template_path, "r", encoding="utf-8") as f:
@@ -75,7 +79,7 @@ def run_atis_system():
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html)
     
-    print(">>> SUCCÈS : Dashboard mis à jour.")
+    print(">>> SUCCÈS : Dashboard mis à jour avec le modèle medium.")
 
 if __name__ == "__main__":
     run_atis_system()
