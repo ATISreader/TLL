@@ -1,7 +1,7 @@
 import os
-from google import genai
-from google.genai import types
 import json
+from groq import Groq
+from faster_whisper import WhisperModel
 
 def run_atis_system():
     print(">>> DÉMARRAGE DU SCRIPT")
@@ -10,59 +10,46 @@ def run_atis_system():
     index_path = "index.html"
 
     if not os.path.exists(audio_file):
-        print(f">>> ERREUR: Fichier {audio_file} INTROUVABLE sur le disque.")
+        print(f">>> ERREUR: {audio_file} introuvable.")
         return
 
-    # Configuration du client
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        print(">>> ERREUR: GEMINI_API_KEY non configurée !")
-        return
-        
-    client = genai.Client(api_key=api_key)
+    # 1. Transcription locale (Gratuite & Illimitée)
+    print(">>> Transcription locale avec Whisper...")
+    model = WhisperModel("tiny", device="cpu", compute_type="int8")
+    segments, _ = model.transcribe(audio_file)
+    transcription = " ".join([segment.text for segment in segments])
+    print(f">>> TRANSCRIPTION : {transcription}")
+
+    # 2. Analyse JSON via Groq
+    groq_api_key = os.environ.get("GROQ_API_KEY")
+    client = Groq(api_key=groq_api_key)
+
+    prompt = f"""
+    Analyse cette transcription ATIS et extrais les données en JSON pur.
+    Transcription: {transcription}
+    Retourne uniquement le JSON avec ces clés: 
+    INFO, ZULU, RWY, QNH, WIND, RVR, TEMP_DEWP, RCC, CONTAM, RAW_TEXT
+    """
+
+    print(">>> Envoi à Groq (Llama 3.3)...")
+    completion = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        response_format={"type": "json_object"}
+    )
+
+    data = json.loads(completion.choices[0].message.content)
     
-    try:
-        print(f">>> Lecture de {audio_file}...")
-        with open(audio_file, "rb") as f:
-            audio_bytes = f.read()
-
-        prompt = """
-        Analyse cet audio ATIS aéronautique. Réponds UNIQUEMENT avec un JSON pur (sans markdown).
-        {
-            "INFO": "Lettre", "ZULU": "Heure", "RWY": "Piste", "QNH": "Valeur",
-            "WIND": "Vent", "RVR": "Visibilité/RVR", "TEMP_DEWP": "T/DP",
-            "RCC": "RCC", "CONTAM": "Contaminants", "RAW_TEXT": "Transcription complète"
-        }
-        """
-
-        audio_part = types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav")
-
-        print(">>> Envoi à Gemini 2.0 Flash...")
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[prompt, audio_part]
-        )
-        
-        output = response.text.strip().replace("```json", "").replace("```", "")
-        data = json.loads(output)
-        print(f">>> DONNÉES PARSÉES : {data}")
-
-        # Lecture du template
-        with open(template_path, "r", encoding="utf-8") as f:
-            html = f.read()
+    # 3. Mise à jour du template (identique)
+    with open(template_path, "r", encoding="utf-8") as f:
+        html = f.read()
     
-        # Remplacement
-        for key, value in data.items():
-            html = html.replace("{{" + key + "}}", str(value))
-        
-        # Écriture forcée
-        with open(index_path, "w", encoding="utf-8") as f:
-            f.write(html)
-        
-        print(f">>> SUCCÈS : {index_path} a été écrit.")
-
-    except Exception as e:
-        print(f">>> ERREUR CRITIQUE : {e}")
+    for key, value in data.items():
+        html = html.replace("{{" + key + "}}", str(value))
+    
+    with open(index_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    print(">>> SUCCÈS : Dashboard mis à jour.")
 
 if __name__ == "__main__":
     run_atis_system()
