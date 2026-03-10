@@ -18,11 +18,15 @@ jobs:
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Record Audio (2m30s)
+      - name: Record and Filter Audio (2m30s)
         run: |
-          # -t 150 pour 2 minutes et 30 secondes
-          # Ajout de flags pour stabiliser la connexion au flux icecast
-          ffmpeg -y -i "https://icecast.kobly.com/eetn2_atis" -t 150 -c:a pcm_s16le -ar 16000 -ac 1 atis_recorded.wav
+          # Enregistrement avec filtrage audio :
+          # highpass=f=200 : supprime les bourdonnements graves
+          # lowpass=f=3500 : supprime le souffle aigu des radios
+          # afftdn=nr=15 : réduction de bruit adaptative
+          ffmpeg -y -i "https://icecast.kobly.com/eetn2_atis" -t 150 \
+          -af "highpass=f=200, lowpass=f=3500, afftdn=nr=15:nt=w" \
+          -c:a pcm_s16le -ar 16000 -ac 1 atis_recorded.wav
 
       - name: Verify Audio
         run: ls -lh atis_recorded.wav
@@ -32,6 +36,6 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add atis_recorded.wav
-          # Le timestamp dans le message force GitHub à voir un changement réel
+          # Le || exit 0 évite une erreur si aucun changement n'est détecté
           git commit -m "New Audio Recording: $(date +'%Y-%m-%d %H:%M:%S')" || exit 0
           git push
