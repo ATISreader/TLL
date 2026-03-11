@@ -22,7 +22,6 @@ def run_atis_system():
     print(">>> TRANSCRIPTION EN COURS...")
     segments, _ = model.transcribe(audio_file)
     
-    # 2. Dédoublonnage et concaténation
     unique_segments = []
     seen = set()
     for segment in segments:
@@ -32,30 +31,28 @@ def run_atis_system():
             seen.add(text)
     transcription = " ".join(unique_segments).upper()
     
-    # 3. Application du dictionnaire
+    # 2. Application du dictionnaire
     for erreur, correction in replacement_dict.items():
         transcription = transcription.replace(erreur.upper(), correction.upper())
     
-    # 4. Extraction du bloc unique (Regex : de "THIS IS TALLINN" à la prochaine occurrence)
+    # 3. Extraction du bloc unique
     pattern = r"(THIS IS TALLINN.*?)(?=THIS IS TALLINN|$)"
     match = re.search(pattern, transcription, re.IGNORECASE | re.DOTALL)
     clean_transcription = match.group(1).strip() if match else transcription
 
-    # 5. Analyse Groq
+    # 4. Analyse Groq
     print(">>> ANALYSE AVEC GROQ (LLAMA-3.3)...")
-    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+    client = Groq(api_key=os.environ.get("GROQ_KEY"))
     prompt = f"""
-    Analyze this ATIS transcription. Return a JSON object ONLY.
-    - INFO: Extract ONLY the single letter (e.g. "K").
+    You are an aviation expert. Analyze this ATIS. Return ONLY a JSON object.
+    - INFO: Extract ONLY the letter (e.g. "D").
     - ZULU: Extract time as HH:MM.
-    - RWY: Return exactly "26 IN USE".
-    - WIND: Extract clear values (e.g. 230°, 10 KNOTS).
-    - QNH: Extract clear values (e.g. 1014 HPA).
-    - RVR: Extract value or "NONE".
-    - TEMP_DEWP: Extract format (e.g. 12, -1).
+    - RWY: "26 IN USE".
+    - WIND: Extract clear values (e.g. 190°, 9 KNOTS). If multiple, list them.
+    - RVR: Extract visibility or "NONE".
+    - TEMP_DEWP: Extract format (e.g. 11, 3).
     - RCC: Format as X, X, X.
-    - CONTAM: Format clearly (e.g. WET 50%, WET 50%, WET 25%).
-    - RAW_TEXT: The provided transcription.
+    - CONTAM: Extract percentage and state (e.g. "25% WET, 25% WET, 25% WET").
     
     Transcription: {clean_transcription}
     """
@@ -68,21 +65,25 @@ def run_atis_system():
 
     data = json.loads(completion.choices[0].message.content)
     
-    # 6. Nettoyage final pour garantir le format visuel souhaité
-    # Nettoyage des unités doublées par l'IA
-    if "QNH" in data:
-        data["QNH"] = data["QNH"].upper().replace("HPAHPA", "HPA")
-    
-    # Forçage des valeurs spécifiques
+    # 5. Nettoyage dynamique
     data["INFO"] = data.get("INFO", "").replace("INFORMATION", "").strip()
     data["RWY"] = "26 IN USE"
     data["RAW_TEXT"] = clean_transcription
+    
+    # Correction dynamique des contaminants (Whisper 2.5% -> 25%)
+    if "CONTAM" in data:
+        data["CONTAM"] = str(data["CONTAM"]).replace("2.5", "25").replace("PERCENT", "%")
 
-    # 7. Injection dans le template HTML
+    # Logique de visibilité automatique
+    if "CAVOK" in clean_transcription.upper():
+        data["RVR"] = "CAVOK"
+    elif not data.get("RVR") or str(data.get("RVR")).upper() == "NONE":
+        data["RVR"] = "N/A"
+
+    # 6. Injection dans le template
     with open(template_path, "r", encoding="utf-8") as f:
         html = f.read()
     
-    # On remplace les placeholders par les valeurs du dictionnaire 'data'
     for key, value in data.items():
         html = html.replace("{{" + key + "}}", str(value))
     
