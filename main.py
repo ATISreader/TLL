@@ -70,24 +70,25 @@ def run_atis_system():
     data["RWY"] = "26 IN USE"
     data["RAW_TEXT"] = clean_transcription
     
-    # Correction dynamique des contaminants (Whisper 2.5% -> 25%)
+    # Gestion propre des listes (WIND, CONTAM, RCC)
+    for key in ["WIND", "CONTAM", "RCC"]:
+        val = data.get(key)
+        if isinstance(val, list):
+            # Transforme ['A', 'B'] en "A <br> B"
+            data[key] = "<br>".join([str(x) for x in val])
+        elif isinstance(val, str):
+            # Nettoie les crochets si Groq renvoie une chaîne listée
+            data[key] = val.replace("[", "").replace("]", "").replace("'", "").replace('"', "").replace(",", "<br>")
+
+    # Correction contaminants spécifique (erreur 2.5% -> 25%)
     if "CONTAM" in data:
         data["CONTAM"] = str(data["CONTAM"]).replace("2.5", "25").replace("PERCENT", "%")
 
     # Logique de visibilité automatique
     if "CAVOK" in clean_transcription.upper():
         data["RVR"] = "CAVOK"
-    elif not data.get("RVR") or str(data.get("RVR")).upper() == "NONE":
+    elif not data.get("RVR") or str(data.get("RVR")).upper() in ["NONE", "N/A"]:
         data["RVR"] = "N/A"
-
-    # Normalisation du vent si c'est une liste ou une chaîne complexe
-    wind_data = data.get("WIND", "")
-    if isinstance(wind_data, list):
-        # Transforme la liste ['a', 'b'] en "a <br> b"
-        data["WIND"] = "<br>".join(wind_data)
-    elif isinstance(wind_data, str):
-        # Nettoie les crochets si Groq a renvoyé une chaîne formatée comme une liste
-        data["WIND"] = wind_data.replace("[", "").replace("]", "").replace("'", "").replace(",", "<br>")
 
     # 6. Injection dans le template
     with open(template_path, "r", encoding="utf-8") as f:
