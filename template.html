@@ -5,185 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EETN ATIS Dashboard</title>
     <style>
-        /* Variables de design pour la cohérence */
         :root {
             --bg: #000000;
             --card: #0d0d0d;
             --border: #222222;
             --text-main: #ffffff;
             --text-dim: #777777;
-            --accent: #ffffff;
-            --danger: #ff4444;
         }
-
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            background-color: var(--bg);
-            color: var(--text-main);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-            line-height: 1.4;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 450px; /* Largeur idéale pour la lisibilité */
-        }
-
-        /* En-tête */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            font-weight: 800;
-            font-size: 0.75rem;
-            letter-spacing: 2px;
-            color: var(--text-dim);
-            text-transform: uppercase;
-        }
-
-        .zulu-time { color: var(--text-main); }
-
-        /* Section Information (Lettre Géante) */
-        .info-card {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 12px;
-        }
-
-        .info-label {
-            text-transform: uppercase;
-            font-size: 0.65rem;
-            letter-spacing: 4px;
-            color: var(--text-dim);
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .info-letter {
-            font-size: 6.5rem;
-            font-weight: 900;
-            line-height: 1;
-            margin: 0;
-        }
-
-        /* Grille Responsive */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
-
-        .tile {
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
+        body { background-color: var(--bg); color: var(--text-main); font-family: 'Inter', sans-serif; display: flex; justify-content: center; padding: 20px; line-height: 1.4; }
+        .container { width: 100%; max-width: 450px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; font-weight: 800; font-size: 0.75rem; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; }
+        .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 24px; padding: 20px; text-align: center; margin-bottom: 12px; }
+        .info-label { text-transform: uppercase; font-size: 0.65rem; letter-spacing: 4px; color: var(--text-dim); display: block; margin-bottom: 5px; }
+        .info-letter { font-size: 6.5rem; font-weight: 900; line-height: 1; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        .tile { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 16px; }
         .full-width { grid-column: span 2; }
-
-        .label {
-            color: var(--text-dim);
-            font-size: 0.6rem;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 1px;
-            margin-bottom: 6px;
-        }
-
-        .val {
-            font-size: 1.25rem;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-
-        .sub-val {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            margin-top: 2px;
-        }
-
-        /* Texte brut (RAW) */
-        .raw-section {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border);
-        }
-
-        .raw-text {
-            font-size: 0.7rem;
-            color: #444444; /* Très discret */
-            text-align: justify;
-            text-transform: uppercase;
-            line-height: 1.6;
-        }
-
-        /* Ajustements pour très petits écrans */
-        @media (max-width: 350px) {
-            .info-letter { font-size: 5rem; }
-            .val { font-size: 1.1rem; }
-        }
+        .label { color: var(--text-dim); font-size: 0.6rem; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; margin-bottom: 6px; }
+        .val { font-size: 1.25rem; font-weight: 700; }
+        .raw-section { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border); }
+        .raw-text { font-size: 0.7rem; color: #444; text-transform: uppercase; line-height: 1.6; text-align: justify; }
     </style>
 </head>
 <body>
-
     <div class="container">
         <div class="header">
             <span>EETN TALLINN</span>
             <span class="zulu-time">{{ZULU}}Z</span>
         </div>
-
         <div class="info-card">
             <span class="info-label">Information</span>
             <div class="info-letter">{{INFO}}</div>
         </div>
-
         <div class="grid">
-            <div class="tile">
-                <div class="label">Runway</div>
-                <div class="val">{{RWY}}</div>
-            </div>
-            <div class="tile">
-                <div class="label">QNH</div>
-                <div class="val">{{QNH}}hPa</div>
-            </div>
-            <div class="tile">
-                <div class="label">Wind (TDZ)</div>
-                <div class="val">{{WIND}}</div>
-            </div>
-            <div class="tile">
-                <div class="label">Visibility</div>
-                <div class="val">{{RVR}}</div>
-                <div class="sub-val"></div>
-            </div>
-            <div class="tile">
-                <div class="label">Temp / Dewp</div>
-                <div class="val">{{TEMP_DEWP}}</div>
-            </div>
-            <div class="tile">
-                <div class="label">RCC</div>
-                <div class="val">{{RCC}}</div>
-            </div>
-            <div class="tile full-width">
-                <div class="label">Contaminants</div>
-                <div class="val">{{CONTAM}}</div>
-            </div>
+            <div class="tile"><div class="label">Runway</div><div class="val">{{RWY}}</div></div>
+            <div class="tile"><div class="label">QNH</div><div class="val">{{QNH}}</div></div>
+            <div class="tile"><div class="label">Wind (TDZ)</div><div class="val">{{WIND}}</div></div>
+            <div class="tile"><div class="label">Visibility</div><div class="val">{{RVR}}</div></div>
+            <div class="tile"><div class="label">Temp / Dewp</div><div class="val">{{TEMP_DEWP}}</div></div>
+            <div class="tile"><div class="label">RCC</div><div class="val">{{RCC}}</div></div>
+            <div class="tile full-width"><div class="label">Contaminants</div><div class="val">{{CONTAM}}</div></div>
         </div>
-
-        <div class="raw">
+        <div class="raw-section">
             <div class="label" style="margin-bottom: 10px;">Transcription brute</div>
-            {{RAW_TEXT}}
+            <div class="raw-text">{{RAW_TEXT}}</div>
         </div>
     </div>
 </body>
