@@ -23,6 +23,12 @@ replacement_dict = {
     "ONE ZERO KILOMETERS": "10KM",
     "ONE ZERO ONE EIGHT": "1018",
     "WEHRFURT": "THE AIRPORT",
+    "PATTY DOWN": "TOUCHDOWN",      # Correction de Whisper
+    "PATTY": "TOUCHDOWN",           # Sécurité supplémentaire
+    "2.5 PERCENT": "25 PERCENT",    # Correction mathématique pour les contaminants
+    "TOUCH GROUND": "TOUCHDOWN",    # Correction terminologique
+    "COVER OK": "CAVOK",            # Correction phonétique majeure
+    "TRANSITION LEVEL 6.5": "TRANSITION LEVEL 65"
 
     # --- Piste & RCC ---
     "PATCH DOWN": "TOUCHDOWN",
