@@ -29,6 +29,7 @@ replacement_dict = {
     "TOUCH GROUND": "TOUCHDOWN",    # Correction terminologique
     "COVER OK": "CAVOK",            # Correction phonétique majeure
     "TRANSITION LEVEL 6.5": "TRANSITION LEVEL 65",
+    "Z1": "ZONE",
 
     # --- Piste & RCC ---
     "PATCH DOWN": "TOUCHDOWN",
