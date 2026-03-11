@@ -28,7 +28,7 @@ replacement_dict = {
     "2.5 PERCENT": "25 PERCENT",    # Correction mathématique pour les contaminants
     "TOUCH GROUND": "TOUCHDOWN",    # Correction terminologique
     "COVER OK": "CAVOK",            # Correction phonétique majeure
-    "TRANSITION LEVEL 6.5": "TRANSITION LEVEL 65"
+    "TRANSITION LEVEL 6.5": "TRANSITION LEVEL 65",
 
     # --- Piste & RCC ---
     "PATCH DOWN": "TOUCHDOWN",
