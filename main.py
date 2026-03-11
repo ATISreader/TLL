@@ -80,6 +80,15 @@ def run_atis_system():
     elif not data.get("RVR") or str(data.get("RVR")).upper() == "NONE":
         data["RVR"] = "N/A"
 
+    # Normalisation du vent si c'est une liste ou une chaîne complexe
+    wind_data = data.get("WIND", "")
+    if isinstance(wind_data, list):
+        # Transforme la liste ['a', 'b'] en "a <br> b"
+        data["WIND"] = "<br>".join(wind_data)
+    elif isinstance(wind_data, str):
+        # Nettoie les crochets si Groq a renvoyé une chaîne formatée comme une liste
+        data["WIND"] = wind_data.replace("[", "").replace("]", "").replace("'", "").replace(",", "<br>")
+
     # 6. Injection dans le template
     with open(template_path, "r", encoding="utf-8") as f:
         html = f.read()
