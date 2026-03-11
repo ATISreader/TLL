@@ -53,6 +53,8 @@ replacement_dict = {
     "TOUCH-TONE": "TOUCHDOWN",
     "CROSS-TREND": "CROSSWIND",
     "CLIMB": "TIME",
+    "CAVALCADE": "CAVOK",
+    "NO SEEK": "NOSIG",
 
     # --- Chiffres & Alphabet ---
     "ZERO": "0", "ONE": "1", "TWO": "2", "THREE": "3", "FOUR": "4",
