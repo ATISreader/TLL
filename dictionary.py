@@ -64,6 +64,9 @@ replacement_dict = {
     "CLIMB": "TIME",
     "CAVALCADE": "CAVOK",
     "NO SEEK": "NOSIG",
+    "EXTRA PASTEL": "HPA",
+    "EXTRA PASCAL": "HPA",
+    " 1, 0, 1, 0": " 1010", # Aide à coller les chiffres
 
     # --- Chiffres & Alphabet ---
     "ZERO": "0", "ONE": "1", "TWO": "2", "THREE": "3", "FOUR": "4",
