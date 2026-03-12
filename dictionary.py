@@ -36,6 +36,7 @@ replacement_dict = {
     "PATCH DOWN": "TOUCHDOWN",
     "PACHYDOWN": "TOUCHDOWN",
     "MEET POINT": "MIDPOINT",
+    "SSTOP": "STOP",
     "STOPEND": "STOP END",
     "STOP-END": "STOP END",
     "TOP-END": "STOP END",
