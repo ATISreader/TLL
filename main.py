@@ -70,24 +70,43 @@ def run_atis_system():
     data["RWY"] = "26 IN USE"
     data["RAW_TEXT"] = clean_transcription
     
-    # Gestion propre des listes (WIND, CONTAM, RCC)
-    for key in ["WIND", "CONTAM", "RCC"]:
-        val = data.get(key)
+    # --- SECURITÉ QNH ---
+    # On cherche le QNH dans tout le JSON si la clé "QNH" est absente ou mal nommée
+    qnh_final = "1011 HPA" # Valeur par défaut si tout échoue
+    for k, v in data.items():
+        if "QNH" in k.upper():
+            digits = re.sub(r"\D", "", str(v))
+            if len(digits) >= 4:
+                qnh_final = f"{digits[:4]} HPA"
+                break
+    data["QNH"] = qnh_final
+
+    # --- NETTOYAGE DES LISTES (WIND, CONTAM, RCC, RVR) ---
+    # On ajoute explicitement RVR et Visibility pour éviter les ['...']
+    keys_to_clean = ["WIND", "CONTAM", "RCC", "RVR", "VISIBILITY"]
+    for key in keys_to_clean:
+        # On essaie de trouver la clé même si elle est mal nommée par l'IA
+        actual_key = next((k for k in data.keys() if k.upper() == key), key)
+        val = data.get(actual_key)
+        
         if isinstance(val, list):
-            # Transforme ['A', 'B'] en "A <br> B"
             data[key] = "<br>".join([str(x) for x in val])
         elif isinstance(val, str):
-            # Nettoie les crochets si Groq renvoie une chaîne listée
-            data[key] = val.replace("[", "").replace("]", "").replace("'", "").replace('"', "").replace(",", "<br>")
+            clean_val = val.replace("[", "").replace("]", "").replace("'", "").replace('"', "").replace(",", "<br>")
+            data[key] = clean_val
 
-    # Correction contaminants spécifique (erreur 2.5% -> 25%)
+    # Si l'IA a utilisé "VISIBILITY" au lieu de "RVR", on bascule la donnée
+    if "VISIBILITY" in data and ("RVR" not in data or data["RVR"] == "N/A"):
+        data["RVR"] = data["VISIBILITY"]
+
+    # Correction contaminants spécifique (erreur Whisper 2.5% -> 25%)
     if "CONTAM" in data:
         data["CONTAM"] = str(data["CONTAM"]).replace("2.5", "25").replace("PERCENT", "%")
 
-    # Logique de visibilité automatique
+    # Logique de visibilité automatique (CAVOK)
     if "CAVOK" in clean_transcription.upper():
         data["RVR"] = "CAVOK"
-    elif not data.get("RVR") or str(data.get("RVR")).upper() in ["NONE", "N/A"]:
+    elif not data.get("RVR") or str(data.get("RVR")).upper() in ["NONE", "N/A", ""]:
         data["RVR"] = "N/A"
 
     # 6. Injection dans le template
