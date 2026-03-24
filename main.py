@@ -15,12 +15,12 @@ def run_atis_system():
         print(">>> ERREUR: Fichier audio manquant.")
         sys.exit(1)
 
-    # 1. Transcription avec Whisper Medium
+    # 1. Transcription avec Whisper (Paramètres robustes)
     print(">>> CHARGEMENT DU MODÈLE : medium...")
     model = WhisperModel("medium", device="cpu", compute_type="int8")
     
     print(">>> TRANSCRIPTION EN COURS...")
-    segments, _ = model.transcribe(audio_file)
+    segments, _ = model.transcribe(audio_file, beam_size=5, condition_on_previous_text=False)
     
     unique_segments = []
     seen = set()
@@ -31,29 +31,20 @@ def run_atis_system():
             seen.add(text)
     transcription = " ".join(unique_segments).upper()
     
-    # 2. Application du dictionnaire (Nettoyage initial)
+    # 2. Application du dictionnaire
     for erreur, correction in replacement_dict.items():
         transcription = transcription.replace(erreur.upper(), correction.upper())
     
-    # --- NETTOYAGE DES CHIFFRES ---
-    # A. Supprime les virgules entre les chiffres (ex: 1, 0, 1, 0 -> 1 0 1 0)
-    transcription = re.sub(r'(\d),\s*(\d)', r'\1 \2', transcription)
-    # B. Colle les chiffres (ex: 1 0 1 0 -> 1010)
-    transcription = re.sub(r'(?<=\d)\s+(?=\d)', '', transcription)
+    # --- NETTOYAGE DES CHIFFRES & VIRGULES ---
+    transcription = transcription.replace(",", "")
+    transcription = re.sub(r'(?<= \d)\s+(?=\d)', '', transcription)
     
-    # 3. Extraction du bloc unique (Version Robuste)
+    # 3. Extraction du bloc (Cherche la dernière boucle pour maximiser les chances de complétude)
     start_marker = "THIS IS TALLINN"
     if start_marker in transcription:
-        # On prend tout à partir du premier "THIS IS TALLINN" jusqu'à la fin de l'audio
-        # pour être sûr de ne rien couper (vent, QNH, etc.)
-        full_atis = transcription[transcription.find(start_marker):]
-        
-        # Si le message se répète (plusieurs boucles), on ne garde que la première
-        parts = full_atis.split(start_marker)
-        # parts[0] est vide, parts[1] est le premier message complet
-        clean_transcription = start_marker + parts[1] if len(parts) > 1 else full_atis
+        clean_transcription = transcription[transcription.rfind(start_marker):].strip()
     else:
-        clean_transcription = transcription
+        clean_transcription = transcription.strip()
 
     # 4. Analyse Groq
     print(">>> ANALYSE AVEC GROQ...")
@@ -62,6 +53,7 @@ def run_atis_system():
     
     prompt = f"""
     You are an aviation expert. Analyze this ATIS. Return ONLY a JSON object.
+    Use "XXX" if a value is missing or unclear.
     - INFO: Letter only.
     - ZULU: HH:MM.
     - RWY: "26 IN USE".
@@ -83,20 +75,27 @@ def run_atis_system():
 
     data = json.loads(completion.choices[0].message.content)
     
-    # 5. Nettoyage dynamique des données pour le HTML
-    data["INFO"] = data.get("INFO", "").replace("INFORMATION", "").strip()
+    # 5. Nettoyage et Sécurisation (Remplacement des None/Vides par XXX)
     data["RAW_TEXT"] = clean_transcription
     
-    # Sécurité QNH
-    qnh_raw = str(data.get("QNH", "1011"))
-    qnh_digits = re.sub(r"\D", "", qnh_raw)
-    data["QNH"] = f"{qnh_digits} HPA" if qnh_digits else "1011 HPA"
-
-    # Nettoyage des listes et formatage (Wind, RCC, etc.)
-    for key in ["WIND", "CONTAM", "RCC", "RVR"]:
+    # Liste des clés à surveiller
+    keys_to_check = ["INFO", "ZULU", "WIND", "RVR", "TEMP_DEWP", "QNH", "RCC", "CONTAM"]
+    
+    for key in keys_to_check:
         val = data.get(key)
-        if isinstance(val, list):
-            # Pour le vent, on ne garde que le premier élément (TDZ)
+        
+        # Si la valeur est absente, nulle ou "None"
+        if val is None or str(val).strip().upper() in ["NONE", "N/A", ""]:
+            data[key] = "XXX"
+            continue
+
+        # Traitement spécifique pour le QNH (doit avoir 4 chiffres)
+        if key == "QNH":
+            digits = re.sub(r"\D", "", str(val))
+            data[key] = f"{digits} HPA" if len(digits) == 4 else "XXX"
+        
+        # Formatage des listes/chaînes pour le HTML
+        elif isinstance(val, list):
             data[key] = str(val[0]) if key == "WIND" else "<br>".join([str(x) for x in val])
         elif isinstance(val, str):
             data[key] = val.replace("[", "").replace("]", "").replace("'", "").replace('"', "").replace(",", "<br>")
@@ -104,14 +103,16 @@ def run_atis_system():
     # 6. Injection dans le template
     with open(template_path, "r", encoding="utf-8") as f:
         html = f.read()
+    for key in data:
+        html = html.replace("{{" + key + "}}", str(data[key]))
     
-    for key, value in data.items():
-        html = html.replace("{{" + key + "}}", str(value))
-    
+    # Nettoyage final au cas où des tags resteraient
+    html = re.sub(r"\{\{.*?\}\}", "XXX", html)
+
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html)
     
-    print(f">>> SUCCÈS : Dashboard mis à jour avec Information {data.get('INFO')}.")
+    print(f">>> SUCCÈS : Dashboard mis à jour.")
 
 if __name__ == "__main__":
     run_atis_system()
