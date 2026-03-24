@@ -50,6 +50,7 @@ replacement_dict = {
     "IN YOUTH": "IN USE",
     "MINUS 0 TO AN INCH": "MINUS 1",
     "KARAOKE": "CAVOK",
+    "TOUCHDOWN Z1": "TOUCHDOWN ZONE",
 
     # --- Météo & LVP ---
     "CAPITAL K": "CAVOK",
