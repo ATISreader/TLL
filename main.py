@@ -34,6 +34,11 @@ def run_atis_system():
     # 2. Application du dictionnaire
     for erreur, correction in replacement_dict.items():
         transcription = transcription.replace(erreur.upper(), correction.upper())
+
+    # --- AJOUT ICI : COLLAGE DES CHIFFRES ---
+    # Cette regex cherche un espace situé ENTRE deux chiffres et le supprime
+    # Exemple : "1 0 5 0" -> "1050" | "RUNWAY 2 6" -> "RUNWAY 26"
+    transcription = re.sub(r'(?<=\d)\s+(?=\d)', '', transcription)
     
     # 3. Extraction du bloc unique
     pattern = r"(THIS IS TALLINN.*?)(?=THIS IS TALLINN|$)"
