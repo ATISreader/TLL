@@ -31,6 +31,11 @@ replacement_dict = {
     "TRANSITION LEVEL 6.5": "TRANSITION LEVEL 65",
     "Z1": "ZONE",
     "TOUCH DOWN": "TOUCHDOWN",
+    "WESTERN ITO": "THE VICINITY OF THE",
+    "WESTERN ITALY": "THE VICINITY OF THE", # On l'a vu dans ton log précédent !
+    "IN THE VICINITY": "IN THE VICINITY OF THE",
+    "VICINITY OF AIRPORT": "VICINITY OF THE AIRPORT",
+    "CAVOKAY": "CAVOK",
 
     # --- Piste & RCC ---
     "PATCH DOWN": "TOUCHDOWN",
