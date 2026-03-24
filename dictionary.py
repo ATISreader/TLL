@@ -12,16 +12,13 @@ replacement_dict = {
     "TALIN": "TALLINN",
     "VST AIRPORT": "TALLINN AIRPORT",
     "SAILING":"TALLINN",
-    "1450M": "1450", 
     "NO-SICK": "NOSIG",
     "STATUS SKY": "STATE OF SKY",
     "ITALIAN AIRPORT": "TALLINN AIRPORT",
     "LIMA OUT": "LIMA",
-    "ONE SIX TWO ZERO": "1620",
     "TWO SIX ZERO DEGREES": "260 DEGREES",
     "ONE TWO KNOTS": "12 KNOTS",
     "ONE ZERO KILOMETERS": "10KM",
-    "ONE ZERO ONE EIGHT": "1018",
     "WEHRFURT": "THE AIRPORT",
     "PATTY DOWN": "TOUCHDOWN",      # Correction de Whisper
     "PATTY": "TOUCHDOWN",           # Sécurité supplémentaire
@@ -39,6 +36,7 @@ replacement_dict = {
     "THIS IS TALENT": "THIS IS TALLINN",
     "THIS IS TELLIN": "THIS IS TALLINN",
     "WHICH IS TALLINN": "THIS IS TALLINN",
+    "SSTOP": "STOP",
 
     # --- Piste & RCC ---
     "PATCH DOWN": "TOUCHDOWN",
@@ -62,7 +60,6 @@ replacement_dict = {
     "ESTHER PASCAL": "HPA",
     "EXTRA PASCAL": "HPA",
     "HECTOPASCAL": "HPA",
-    "QNH 1010P": "QNH 1010",
     "LOWERCAST": "OVERCAST",
     "LOW VISIBILITY PROCEDURES": "LVP ACTIVE",
     "LVP ACTIVE IN OPERATION": "LVP ACTIVE",
@@ -75,7 +72,6 @@ replacement_dict = {
     "NO SEEK": "NOSIG",
     "EXTRA PASTEL": "HPA",
     "EXTRA PASCAL": "HPA",
-    " 1, 0, 1, 0": " 1010", # Aide à coller les chiffres
 
     # --- Chiffres & Alphabet ---
     "ZERO": "0", "ONE": "1", "TWO": "2", "THREE": "3", "FOUR": "4",
