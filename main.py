@@ -90,7 +90,7 @@ def run_atis_system():
     
     # --- SECURITÉ QNH ---
     # On cherche le QNH dans tout le JSON si la clé "QNH" est absente ou mal nommée
-    qnh_final = "1011 HPA" # Valeur par défaut si tout échoue
+    qnh_final = "9999 HPA" # Valeur par défaut si tout échoue
     for k, v in data.items():
         if "QNH" in k.upper():
             digits = re.sub(r"\D", "", str(v))
