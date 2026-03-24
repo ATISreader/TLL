@@ -40,10 +40,23 @@ def run_atis_system():
     # Exemple : "1 0 5 0" -> "1050" | "RUNWAY 2 6" -> "RUNWAY 26"
     transcription = re.sub(r'(?<=\d)\s+(?=\d)', '', transcription)
     
-    # 3. Extraction du bloc unique
-    pattern = r"(THIS IS TALLINN.*?)(?=THIS IS TALLINN|$)"
+    # 3. Extraction du bloc unique (plus robuste)
+    # On cherche à capturer depuis "THIS IS TALLINN" jusqu'à "OUT" 
+    # ou jusqu'à la prochaine répétition, ou simplement la fin du texte.
+    pattern = r"(THIS IS TALLINN.*?)(?=THIS IS TALLINN|INFORMATION [A-Z] OUT|$)"
     match = re.search(pattern, transcription, re.IGNORECASE | re.DOTALL)
-    clean_transcription = match.group(1).strip() if match else transcription
+    
+    if match:
+        clean_transcription = match.group(1).strip()
+    else:
+        # Si on ne trouve pas le début standard, on nettoie au moins les répétitions
+        clean_transcription = transcription.strip()
+
+    # Sécurité anti-doublon interne : si le texte est encore trop long (répétition non captée)
+    if len(clean_transcription) > 1000: # Un ATIS fait rarement plus de 800-900 caractères
+        parts = clean_transcription.split("THIS IS TALLINN")
+        if len(parts) > 2:
+            clean_transcription = "THIS IS TALLINN" + parts[1]
 
     # 4. Analyse Groq
     print(">>> ANALYSE AVEC GROQ (LLAMA-3.3)...")
