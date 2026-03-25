@@ -43,14 +43,17 @@ def run_atis_system():
     
     # Supprime les doubles espaces (crucial pour le dictionnaire)
     transcription = re.sub(r'\s+', ' ', transcription).strip()
+    # Dans ton script main.py, avant l'analyse Groq :
+    transcription = re.sub(r'(\d)\.(\d{2,3})', r'\1\2', transcription) 
+    # Transforme 1.701 en 1701
+
+    # --- COLLAGE DES CHIFFRES ---
+    transcription = re.sub(r'(?<= \d)\s+(?=\d)', '', transcription)
 
     # 2. Application du dictionnaire
     sorted_dict = dict(sorted(replacement_dict.items(), key=lambda x: len(x[0]), reverse=True))
     for erreur, correction in sorted_dict.items():
         transcription = transcription.replace(erreur.upper(), correction.upper())
-    
-    # --- COLLAGE DES CHIFFRES ---
-    transcription = re.sub(r'(?<= \d)\s+(?=\d)', '', transcription)
     
     # 3. Extraction du bloc
     start_marker = "THIS IS TALLINN"
