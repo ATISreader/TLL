@@ -29,6 +29,7 @@ replacement_dict = {
     "STOPEND": "STOP END",
     "TOP-END": "STOP END",
     "TOP END": "STOP END",
+    "STOP AND": "STOP END",
 
     # --- 3. TERMES TECHNIQUES & PHONÉTIQUE ---
     "INFORMAATION": "INFORMATION",
