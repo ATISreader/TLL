@@ -41,52 +41,54 @@ def run_atis_system():
     # --- PRÉ-NETTOYAGE ---
     transcription = transcription.replace("-", " ").replace(",", " ")
     
-    # Supprime les doubles espaces (crucial pour le dictionnaire)
+    # Supprime les doubles espaces
     transcription = re.sub(r'\s+', ' ', transcription).strip()
-    # Dans ton script main.py, avant l'analyse Groq :
+    
+    # Nettoyage des points dans les nombres (ex: 1.701 -> 1701)
     transcription = re.sub(r'(\d)\.(\d{2,3})', r'\1\2', transcription) 
-    # Transforme 1.701 en 1701
 
     # --- COLLAGE DES CHIFFRES ---
     transcription = re.sub(r'(?<= \d)\s+(?=\d)', '', transcription)
 
-    # 2. Application du dictionnaire
+    # 2. Application du dictionnaire (Corrections phonétiques)
     sorted_dict = dict(sorted(replacement_dict.items(), key=lambda x: len(x[0]), reverse=True))
     for erreur, correction in sorted_dict.items():
         transcription = transcription.replace(erreur.upper(), correction.upper())
     
-    # 3. Extraction de la boucle complète (Début -> OUT)
-    # On cherche le début standard d'un ATIS
+    # 3. Extraction de la boucle complète avec marge pour l'heure
     start_marker = "THIS IS TALLINN"
     end_marker = "OUT"
     
-    start_index = transcription.find(start_marker)
-    if start_index != -1:
-        # On part du début trouvé
-        fragment = transcription[start_index:]
-        end_index = fragment.find(end_marker)
-        if end_index != -1:
-            # On coupe juste après le premier "OUT" trouvé
-            clean_transcription = fragment[:end_index + len(end_marker)].strip()
+    start_pos = transcription.find(start_marker)
+    if start_pos != -1:
+        # On recule de 30 caractères pour attraper l'heure qui précède souvent l'ID
+        search_start = max(0, start_pos - 30)
+        fragment = transcription[search_start:]
+        
+        end_pos = fragment.find(end_marker)
+        if end_pos != -1:
+            clean_transcription = fragment[:end_pos + len(end_marker)].strip()
         else:
             clean_transcription = fragment.strip()
     else:
         clean_transcription = transcription.strip()
 
     # 4. Analyse, Nettoyage et Standardisation par Groq
-    print(">>> GROQ : RECONSTRUCTION DE LA BOUCLE ATIS...")
+    print(">>> GROQ : RECONSTRUCTION DE LA BOUCLE ET EXTRACTION...")
     api_key = os.environ.get("GROQ_API_KEY") or os.environ.get("GROQ_KEY")
     client = Groq(api_key=api_key)
     
     prompt = f"""
-    You are an expert Aviation AI. I will provide a messy ATIS transcription loop.
+    You are an expert Aviation AI. Reconstruct this ATIS loop professionally.
     
-    MISSION:
-    1. RECONSTRUCT the loop into a single, professional, standardized ATIS paragraph.
-       - START with: "THIS IS TALLINN AIRPORT..."
-       - END with: "...INFORMATION [LETTER] OUT."
-       - FIX phonetic errors (e.g., "HECTOR PASCAL" -> "HPA", "KARAOKE" -> "CAVOK", "PATTY" -> "TOUCHDOWN").
-       - FORMAT numbers as digits (e.g., "ONE SEVEN ZERO ONE" -> "1701").
+    CORE RULES:
+    1. RECONSTRUCT: Create a single, clean paragraph.
+       - YOU MUST INCLUDE THE MAIN TIME (e.g., "TIME 1701") at the start.
+       - INCLUDE the Runway Condition Report time (e.g., "AT 1635").
+       - START with the airport ID: "THIS IS TALLINN AIRPORT..."
+       - END strictly with: "...INFORMATION [LETTER] OUT."
+       - FIX phonetic errors (2.5% -> 25%, HECTOR PASCAL -> HPA).
+       - FORMAT all numbers as clean digits (no dots in hours).
     
     2. EXTRACT data into a JSON object.
     
@@ -94,13 +96,13 @@ def run_atis_system():
 
     Return ONLY this JSON structure:
     {{
-      "CLEAN_TEXT": "The professional reconstructed text",
-      "INFO": "Letter only",
+      "CLEAN_TEXT": "The full professional text with ALL times and data",
+      "INFO": "Letter",
       "ZULU": "HH:MM",
       "RWY": "XX IN USE",
       "WIND": "DIR/SPD (GUSTS)",
       "RVR": "Visibility/CAVOK",
-      "TEMP_DEWP": "T/D (e.g. 13/02)",
+      "TEMP_DEWP": "T/D",
       "QNH": "4 digits",
       "RCC": "X/X/X",
       "CONTAM": "State"
@@ -115,11 +117,8 @@ def run_atis_system():
 
     data = json.loads(completion.choices[0].message.content)
     
-    # On remplace le texte brut pour l'affichage final
-    data["RAW_TEXT"] = data.get("CLEAN_TEXT", clean_transcription)
-    
-    # 5. Nettoyage et Sécurisation
-    # On utilise CLEAN_TEXT s'il existe, sinon on garde la transcription initiale
+    # 5. Nettoyage et Sécurisation des données pour le HTML
+    # On privilégie le texte propre de Groq pour la section Transcription
     data["RAW_TEXT"] = data.get("CLEAN_TEXT", clean_transcription)
     
     keys_to_check = ["INFO", "ZULU", "WIND", "RVR", "TEMP_DEWP", "QNH", "RCC", "CONTAM", "RWY"]
@@ -132,28 +131,28 @@ def run_atis_system():
             continue
 
         if key == "QNH":
-            # On s'assure d'extraire les 4 chiffres si Groq a renvoyé "0990 HPA"
             digits = re.sub(r"\D", "", str(val))
             data[key] = f"{digits} HPA" if len(digits) == 4 else "XXX"
         
         elif isinstance(val, list):
             data[key] = "<br>".join([str(x) for x in val])
         elif isinstance(val, str):
-            # On nettoie les caractères résiduels de formatage JSON
             data[key] = val.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
 
-    # 6. Injection dans le template
+    # 6. Injection dans le template HTML
     with open(template_path, "r", encoding="utf-8") as f:
         html = f.read()
+        
     for key in data:
         html = html.replace("{{" + key + "}}", str(data[key]))
     
+    # Sécurité pour les tags non remplacés
     html = re.sub(r"\{\{.*?\}\}", "XXX", html)
 
     with open(index_path, "w", encoding="utf-8") as f:
         f.write(html)
     
-    print(f">>> SUCCÈS : Dashboard mis à jour.")
+    print(f">>> SUCCÈS : Dashboard mis à jour avec Information {data.get('INFO', '?')}.")
 
 if __name__ == "__main__":
     run_atis_system()
