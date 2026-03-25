@@ -55,32 +55,56 @@ def run_atis_system():
     for erreur, correction in sorted_dict.items():
         transcription = transcription.replace(erreur.upper(), correction.upper())
     
-    # 3. Extraction du bloc
+    # 3. Extraction de la boucle complète (Début -> OUT)
+    # On cherche le début standard d'un ATIS
     start_marker = "THIS IS TALLINN"
-    if start_marker in transcription:
-        clean_transcription = transcription[transcription.find(start_marker):].strip()
+    end_marker = "OUT"
+    
+    start_index = transcription.find(start_marker)
+    if start_index != -1:
+        # On part du début trouvé
+        fragment = transcription[start_index:]
+        end_index = fragment.find(end_marker)
+        if end_index != -1:
+            # On coupe juste après le premier "OUT" trouvé
+            clean_transcription = fragment[:end_index + len(end_marker)].strip()
+        else:
+            clean_transcription = fragment.strip()
     else:
         clean_transcription = transcription.strip()
 
-    # 4. Analyse Groq
-    print(">>> ANALYSE AVEC GROQ...")
+    # 4. Analyse, Nettoyage et Standardisation par Groq
+    print(">>> GROQ : RECONSTRUCTION DE LA BOUCLE ATIS...")
     api_key = os.environ.get("GROQ_API_KEY") or os.environ.get("GROQ_KEY")
     client = Groq(api_key=api_key)
     
     prompt = f"""
-    You are an aviation expert. Analyze this ATIS. Return ONLY a JSON object.
-    Use "XXX" if a value is missing or unclear.
-    - INFO: Letter only.
-    - ZULU: HH:MM.
-    - RWY: Active runway ("08 IN USE" or "26 IN USE").
-    - WIND: Extract ONLY the touchdown zone wind (the first one mentioned).
-    - RVR: Extract visibility or "CAVOK".
-    - TEMP_DEWP: Format (e.g. 10, -4).
-    - QNH: Extract ONLY the 4 digits.
-    - RCC: Format X, X, X.
-    - CONTAM: Extract state.
+    You are an expert Aviation AI. I will provide a messy ATIS transcription loop.
     
-    Transcription: {clean_transcription}
+    MISSION:
+    1. RECONSTRUCT the loop into a single, professional, standardized ATIS paragraph.
+       - START with: "THIS IS TALLINN AIRPORT..."
+       - END with: "...INFORMATION [LETTER] OUT."
+       - FIX phonetic errors (e.g., "HECTOR PASCAL" -> "HPA", "KARAOKE" -> "CAVOK", "PATTY" -> "TOUCHDOWN").
+       - FORMAT numbers as digits (e.g., "ONE SEVEN ZERO ONE" -> "1701").
+    
+    2. EXTRACT data into a JSON object.
+    
+    Transcription to process: {clean_transcription}
+
+    Return ONLY this JSON structure:
+    {{
+      "CLEAN_TEXT": "The professional reconstructed text",
+      "INFO": "Letter only",
+      "ZULU": "HH:MM",
+      "RWY": "XX IN USE",
+      "WIND": "DIR/SPD (GUSTS)",
+      "RVR": "Visibility/CAVOK",
+      "TEMP_DEWP": "T/D (e.g. 13/02)",
+      "QNH": "4 digits",
+      "RCC": "X/X/X",
+      "CONTAM": "State"
+    }}
     """
 
     completion = client.chat.completions.create(
@@ -91,8 +115,13 @@ def run_atis_system():
 
     data = json.loads(completion.choices[0].message.content)
     
+    # On remplace le texte brut pour l'affichage final
+    data["RAW_TEXT"] = data.get("CLEAN_TEXT", clean_transcription)
+    
     # 5. Nettoyage et Sécurisation
-    data["RAW_TEXT"] = clean_transcription
+    # On utilise CLEAN_TEXT s'il existe, sinon on garde la transcription initiale
+    data["RAW_TEXT"] = data.get("CLEAN_TEXT", clean_transcription)
+    
     keys_to_check = ["INFO", "ZULU", "WIND", "RVR", "TEMP_DEWP", "QNH", "RCC", "CONTAM", "RWY"]
     
     for key in keys_to_check:
@@ -103,13 +132,15 @@ def run_atis_system():
             continue
 
         if key == "QNH":
+            # On s'assure d'extraire les 4 chiffres si Groq a renvoyé "0990 HPA"
             digits = re.sub(r"\D", "", str(val))
             data[key] = f"{digits} HPA" if len(digits) == 4 else "XXX"
         
         elif isinstance(val, list):
-            data[key] = str(val[0]) if key == "WIND" else "<br>".join([str(x) for x in val])
+            data[key] = "<br>".join([str(x) for x in val])
         elif isinstance(val, str):
-            data[key] = val.replace("[", "").replace("]", "").replace("'", "").replace('"', "").replace(",", "<br>")
+            # On nettoie les caractères résiduels de formatage JSON
+            data[key] = val.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
 
     # 6. Injection dans le template
     with open(template_path, "r", encoding="utf-8") as f:
