@@ -78,5 +78,8 @@ replacement_dict = {
     "GULF": "G", "HOTEL": "H", "DELTA": "D", "VICTOR": "V",
     "1-0": "10",
     "MINUS ": "-",
-    "KKNOTS": "KNOTS"
+    "KKNOTS": "KNOTS",
+    "2.5%": "25%",
+    "2.5 %": "25%",
+    "TWO POINT FIVE PERCENT": "TWENTY-FIVE PERCENT"
 }
