@@ -15,14 +15,11 @@ def run_atis_system():
         print(">>> ERREUR: Fichier audio manquant.")
         sys.exit(1)
 
-    # 1. Transcription avec Whisper (Paramètres robustes pour la radio)
+    # 1. Transcription avec Whisper
     print(">>> CHARGEMENT DU MODÈLE : medium...")
     model = WhisperModel("medium", device="cpu", compute_type="int8")
     
     print(">>> TRANSCRIPTION EN COURS...")
-    # vad_filter=False : On désactive le filtre pour ne pas couper le message prématurément
-    # beam_size=5 : Améliore la précision
-    # patience=2.0 : Force le modèle à chercher plus loin avant de s'arrêter
     segments, _ = model.transcribe(
         audio_file, 
         beam_size=5, 
@@ -41,15 +38,21 @@ def run_atis_system():
             
     transcription = " ".join(unique_segments).upper()
     
-    # 2. Application du dictionnaire
-    for erreur, correction in replacement_dict.items():
+    # --- PRÉ-NETTOYAGE (Important pour que le dictionnaire fonctionne) ---
+    transcription = transcription.replace("-", " ").replace(",", " ")
+
+    # 2. Application du dictionnaire (Trié par longueur pour éviter les conflits)
+    # On trie pour que "TOUCHDOWN Z1" soit traité AVANT "Z1"
+    sorted_dict = dict(sorted(replacement_dict.items(), key=lambda x: len(x[0]), reverse=True))
+    
+    for erreur, correction in sorted_dict.items():
         transcription = transcription.replace(erreur.upper(), correction.upper())
     
-    # --- NETTOYAGE DES CHIFFRES & VIRGULES ---
-    transcription = transcription.replace(",", "")
+    # --- COLLAGE DES CHIFFRES (Après le dictionnaire) ---
+    # Transforme "1 0 0 9" en "1009"
     transcription = re.sub(r'(?<= \d)\s+(?=\d)', '', transcription)
     
-    # 3. Extraction du bloc (Cherche la dernière boucle pour maximiser les chances de complétude)
+    # 3. Extraction du bloc
     start_marker = "THIS IS TALLINN"
     if start_marker in transcription:
         clean_transcription = transcription[transcription.rfind(start_marker):].strip()
@@ -66,7 +69,7 @@ def run_atis_system():
     Use "XXX" if a value is missing or unclear.
     - INFO: Letter only.
     - ZULU: HH:MM.
-    - RWY: Identify the runway in use. It is usually "08 IN USE" or "26 IN USE".    
+    - RWY: Active runway ("08 IN USE" or "26 IN USE").
     - WIND: Extract ONLY the touchdown zone wind (the first one mentioned).
     - RVR: Extract visibility or "CAVOK".
     - TEMP_DEWP: Format (e.g. 10, -4).
@@ -85,26 +88,21 @@ def run_atis_system():
 
     data = json.loads(completion.choices[0].message.content)
     
-    # 5. Nettoyage et Sécurisation (Remplacement des None/Vides par XXX)
+    # 5. Nettoyage et Sécurisation
     data["RAW_TEXT"] = clean_transcription
-    
-    # Liste des clés à surveiller
-    keys_to_check = ["INFO", "ZULU", "WIND", "RVR", "TEMP_DEWP", "QNH", "RCC", "CONTAM"]
+    keys_to_check = ["INFO", "ZULU", "WIND", "RVR", "TEMP_DEWP", "QNH", "RCC", "CONTAM", "RWY"]
     
     for key in keys_to_check:
         val = data.get(key)
         
-        # Si la valeur est absente, nulle ou "None"
         if val is None or str(val).strip().upper() in ["NONE", "N/A", ""]:
             data[key] = "XXX"
             continue
 
-        # Traitement spécifique pour le QNH (doit avoir 4 chiffres)
         if key == "QNH":
             digits = re.sub(r"\D", "", str(val))
             data[key] = f"{digits} HPA" if len(digits) == 4 else "XXX"
         
-        # Formatage des listes/chaînes pour le HTML
         elif isinstance(val, list):
             data[key] = str(val[0]) if key == "WIND" else "<br>".join([str(x) for x in val])
         elif isinstance(val, str):
@@ -116,7 +114,6 @@ def run_atis_system():
     for key in data:
         html = html.replace("{{" + key + "}}", str(data[key]))
     
-    # Nettoyage final au cas où des tags resteraient
     html = re.sub(r"\{\{.*?\}\}", "XXX", html)
 
     with open(index_path, "w", encoding="utf-8") as f:
