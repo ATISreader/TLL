@@ -15,28 +15,26 @@ def run_atis_system():
         print(">>> ERREUR: Fichier audio manquant.")
         sys.exit(1)
 
-    # 1. Transcription avec Whisper (Paramètres de patience maximale)
+    # 1. Transcription avec Whisper (Paramètres robustes pour la radio)
     print(">>> CHARGEMENT DU MODÈLE : medium...")
     model = WhisperModel("medium", device="cpu", compute_type="int8")
     
     print(">>> TRANSCRIPTION EN COURS...")
-    # no_speech_threshold : évite de couper si la voix est faible
-    # vad_filter=False : crucial pour ne pas que le souffle radio soit pris pour du silence
-    # silence_size : attend 1 seconde de vrai silence avant de segmenter
+    # vad_filter=False : On désactive le filtre pour ne pas couper le message prématurément
+    # beam_size=5 : Améliore la précision
+    # patience=2.0 : Force le modèle à chercher plus loin avant de s'arrêter
     segments, _ = model.transcribe(
         audio_file, 
         beam_size=5, 
         condition_on_previous_text=False,
         vad_filter=False,
-        no_speech_threshold=0.3,
-        silence_size=1000
+        patience=2.0
     )
     
     unique_segments = []
     seen = set()
     for segment in segments:
         text = segment.text.strip()
-        # On ignore les segments vides ou trop courts (parasites)
         if text not in seen and len(text) > 3:
             unique_segments.append(text)
             seen.add(text)
