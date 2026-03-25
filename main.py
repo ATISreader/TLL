@@ -38,18 +38,18 @@ def run_atis_system():
             
     transcription = " ".join(unique_segments).upper()
     
-    # --- PRÉ-NETTOYAGE (Important pour que le dictionnaire fonctionne) ---
+    # --- PRÉ-NETTOYAGE ---
     transcription = transcription.replace("-", " ").replace(",", " ")
-
-    # 2. Application du dictionnaire (Trié par longueur pour éviter les conflits)
-    # On trie pour que "TOUCHDOWN Z1" soit traité AVANT "Z1"
-    sorted_dict = dict(sorted(replacement_dict.items(), key=lambda x: len(x[0]), reverse=True))
     
+    # Supprime les doubles espaces (crucial pour le dictionnaire)
+    transcription = re.sub(r'\s+', ' ', transcription).strip()
+
+    # 2. Application du dictionnaire
+    sorted_dict = dict(sorted(replacement_dict.items(), key=lambda x: len(x[0]), reverse=True))
     for erreur, correction in sorted_dict.items():
         transcription = transcription.replace(erreur.upper(), correction.upper())
     
-    # --- COLLAGE DES CHIFFRES (Après le dictionnaire) ---
-    # Transforme "1 0 0 9" en "1009"
+    # --- COLLAGE DES CHIFFRES ---
     transcription = re.sub(r'(?<= \d)\s+(?=\d)', '', transcription)
     
     # 3. Extraction du bloc
