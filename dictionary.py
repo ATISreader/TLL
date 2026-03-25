@@ -30,6 +30,9 @@ replacement_dict = {
     "TOP-END": "STOP END",
     "TOP END": "STOP END",
     "STOP AND": "STOP END",
+    "HECTOR PASCAL": "HPA",
+    "HECTARE PASCAL": "HPA",
+    "Z1": "ZONE", # Pour corriger "TOUCHDOWN Z1" en "TOUCHDOWN ZONE"
 
     # --- 3. TERMES TECHNIQUES & PHONÉTIQUE ---
     "INFORMAATION": "INFORMATION",
