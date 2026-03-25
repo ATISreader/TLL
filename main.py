@@ -55,7 +55,7 @@ def run_atis_system():
     # 3. Extraction du bloc
     start_marker = "THIS IS TALLINN"
     if start_marker in transcription:
-        clean_transcription = transcription[transcription.rfind(start_marker):].strip()
+        clean_transcription = transcription[transcription.find(start_marker):].strip()
     else:
         clean_transcription = transcription.strip()
 
