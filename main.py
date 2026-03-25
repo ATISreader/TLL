@@ -88,6 +88,7 @@ def run_atis_system():
        - END with: "...INFORMATION [LETTER] OUT."
        - FIX phonetic errors (e.g., "HECTOR PASCAL" -> "HPA", "2.5%" -> "25%", "PATTY" -> "TOUCHDOWN").
        - FORMAT numbers as digits (e.g., "ONE SEVEN ZERO ONE" -> "1701").
+       - For CONTAMINANTS: Always format as 'TDZ [value]%, MID [value]%, END [value]%' based on the report.
     
     2. EXTRACT data into a JSON object.
     
@@ -104,7 +105,7 @@ def run_atis_system():
       "TEMP_DEWP": "T/D (e.g. 13/02)",
       "QNH": "4 digits",
       "RCC": "X/X/X",
-      "CONTAM": "State"
+      "CONTAM": "State (Format: TDZ XX%, MID XX%, END XX%)"
     }}
     """
 
