@@ -68,7 +68,7 @@ def run_atis_system():
     Use "XXX" if a value is missing or unclear.
     - INFO: Letter only.
     - ZULU: HH:MM.
-    - RWY: "26 IN USE".
+    - RWY: Identify the runway in use. It is usually "08 IN USE" or "26 IN USE".    
     - WIND: Extract ONLY the touchdown zone wind (the first one mentioned).
     - RVR: Extract visibility or "CAVOK".
     - TEMP_DEWP: Format (e.g. 10, -4).
