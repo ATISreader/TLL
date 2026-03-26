@@ -88,6 +88,7 @@ def run_atis_system():
        - END with: "...INFORMATION [LETTER] OUT."
        - FIX phonetic errors (e.g., "HECTOR PASCAL" -> "HPA", "2.5%" -> "25%", "PATTY" -> "TOUCHDOWN").
        - FORMAT numbers as digits (e.g., "ONE SEVEN ZERO ONE" -> "1701").
+       - They are two runway options : runway 26 or 08.
        - For CONTAMINANTS: Specify the NATURE and LOCATION. 
          Format: "[NATURE] (TDZ XX%, MID XX%, END XX%)"
          Example: "WET (TDZ 25%, MID 25%, END 50%)"
